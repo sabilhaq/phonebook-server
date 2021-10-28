@@ -76,7 +76,6 @@ const getPhonebooks = (queryString) => {
 
 //Create new instance
 const createPhonebook = input => {
-  // Add a new document in collection "phoneboook"
   return new Promise((resolve, reject) => {
     signInWithCustomToken(auth, token)
       .then(async userCredential => {
@@ -125,7 +124,6 @@ const updatePhonebook = (id, input) => {
 
         const phonebookSnap = await getDoc(phonebookRef);
         if (phonebookSnap.exists()) {
-          console.log('Document data:', phonebookSnap.data());
           resolve(phonebookSnap.data());
         } else {
           console.log('No such document!');
@@ -148,7 +146,6 @@ const deletePhonebook = id => {
         const phonebookSnap = await getDoc(phonebookRef);
         await deleteDoc(phonebookRef);
         if (phonebookSnap.exists()) {
-          console.log('Document data:', phonebookSnap.data());
           resolve(phonebookSnap.data());
         } else {
           console.log('No such document!');
