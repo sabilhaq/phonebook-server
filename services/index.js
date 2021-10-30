@@ -12,6 +12,10 @@ const {
   serverTimestamp,
   query,
   where,
+  orderBy,
+  startAt,
+  startAfter,
+  limit,
 } = require('firebase/firestore');
 
 const { getAuth, signInWithCustomToken } = require('firebase/auth');
@@ -45,28 +49,51 @@ var token = jwt.sign(data, serviceAccount.private_key, { algorithm: 'RS256' });
 const auth = getAuth();
 const phonebooksCollection = collection(db, 'phonebooks');
 
-const getPhonebooks = (queryString) => {
+const getPhonebooks = (queryStringObj) => {
+  let { page, offset, perPage, name, phone } = queryStringObj
   return new Promise((resolve, reject) => {
     signInWithCustomToken(auth, token)
-      .then(async userCredential => {
+      .then(async (userCredential) => {
         let phonebookSnapshot;
         let searchQuery;
-        if (!queryString) {
-          phonebookSnapshot = await getDocs(phonebooksCollection);
-        } else if (queryString) {
-          if (queryString.name && queryString.phone) {
-            searchQuery = query(phonebooksCollection, where("name", "==", queryString.name), where("phone", "==", queryString.phone));
-          } else if (queryString.name) {
-            searchQuery = query(phonebooksCollection, where("name", "==", queryString.name));
+
+        if (!name && !phone) {
+          if (page == 1) {
+            const first = query(phonebooksCollection, orderBy('id'), limit(15));
+            phonebookSnapshot = await getDocs(first);
           } else {
-            searchQuery = query(phonebooksCollection, where("phone", "==", queryString.phone));
+            offset = (page - 2) * 5 + 15
+            const first = query(phonebooksCollection, orderBy('id'), limit(offset));
+
+            phonebookSnapshot = await getDocs(first);
+            const lastVisible = phonebookSnapshot.docs[phonebookSnapshot.docs.length - 1];
+            const next = query(
+              phonebooksCollection,
+              orderBy('id'),
+              startAfter(lastVisible),
+              limit(5)
+            );
+            phonebookSnapshot = await getDocs(next);
+          }
+
+        } else if (name || phone) {
+          if (name && phone) {
+            searchQuery = query(
+              phonebooksCollection,
+              where('name', '==', name),
+              where('phone', '==', phone)
+            );
+          } else if (name) {
+            searchQuery = query(phonebooksCollection, where('name', '==', name));
+          } else {
+            searchQuery = query(phonebooksCollection, where('phone', '==', phone));
           }
           phonebookSnapshot = await getDocs(searchQuery);
         }
-        const phonebookList = phonebookSnapshot.docs.map(doc => doc.data());
+        const phonebookList = phonebookSnapshot.docs.map((doc) => doc.data());
         resolve(phonebookList);
       })
-      .catch(error => {
+      .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
         reject(error);
@@ -75,10 +102,10 @@ const getPhonebooks = (queryString) => {
 };
 
 //Create new instance
-const createPhonebook = input => {
+const createPhonebook = (input) => {
   return new Promise((resolve, reject) => {
     signInWithCustomToken(auth, token)
-      .then(async userCredential => {
+      .then(async (userCredential) => {
         const id = Date.now().toString();
         const phonebook = await setDoc(doc(phonebooksCollection, id), {
           id: id,
@@ -96,7 +123,7 @@ const createPhonebook = input => {
           updatedAt: Timestamp.fromDate(new Date(Date.now())),
         });
       })
-      .catch(error => {
+      .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
         reject(error);
@@ -108,7 +135,7 @@ const createPhonebook = input => {
 const updatePhonebook = (id, input) => {
   return new Promise((resolve, reject) => {
     signInWithCustomToken(auth, token)
-      .then(async userCredential => {
+      .then(async (userCredential) => {
         const phonebookRef = doc(db, 'phonebooks', id);
         const update = {
           createdAt: serverTimestamp(),
@@ -126,10 +153,9 @@ const updatePhonebook = (id, input) => {
         if (phonebookSnap.exists()) {
           resolve(phonebookSnap.data());
         } else {
-          console.log('No such document!');
         }
       })
-      .catch(error => {
+      .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
         reject(error);
@@ -138,20 +164,19 @@ const updatePhonebook = (id, input) => {
 };
 
 //Delete an instance
-const deletePhonebook = id => {
+const deletePhonebook = (id) => {
   return new Promise((resolve, reject) => {
     signInWithCustomToken(auth, token)
-      .then(async userCredential => {
+      .then(async (userCredential) => {
         const phonebookRef = doc(db, 'phonebooks', id);
         const phonebookSnap = await getDoc(phonebookRef);
         await deleteDoc(phonebookRef);
         if (phonebookSnap.exists()) {
           resolve(phonebookSnap.data());
         } else {
-          console.log('No such document!');
         }
       })
-      .catch(error => {
+      .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
         reject(error);
@@ -163,5 +188,5 @@ module.exports = {
   getPhonebooks,
   createPhonebook,
   updatePhonebook,
-  deletePhonebook
+  deletePhonebook,
 };

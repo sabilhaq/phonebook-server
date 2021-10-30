@@ -8,11 +8,6 @@ const schema = buildSchema(`
     phone: String
   }
 
-  input PhonebookInputSearch {
-    name: String
-    phone: String
-  }
-
   scalar Date
 
   type Phonebook {
@@ -24,7 +19,7 @@ const schema = buildSchema(`
   }
 
   type Query {
-    getPhonebooks(input: PhonebookInputSearch): [Phonebook]
+    getPhonebooks(page: Int!, offset: Int, limit: Int, name: String, phone: String): [Phonebook]
   }
 
   type Mutation {
@@ -35,9 +30,9 @@ const schema = buildSchema(`
 `);
 
 const root = {
-  getPhonebooks: async ({ input }) => {
+  getPhonebooks: async (queryStringObj) => {
     try {
-      const phonebooks = await services.getPhonebooks(input);
+      const phonebooks = await services.getPhonebooks(queryStringObj);
       return phonebooks;
     } catch (err) {
       throw err;
